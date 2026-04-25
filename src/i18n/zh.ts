@@ -27,6 +27,7 @@ export const zh: Messages = {
   "format.out": "输出",
   "format.tok": "令牌",
   "format.tokPerSec": "tok/s",
+  "format.contextEtaUntilFull": "至满",
 
   // Init
   "init.initializing": "[claude-hud] 正在初始化...",

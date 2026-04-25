@@ -106,6 +106,7 @@ export interface HudConfig {
     promptCacheTtlSeconds: number;
     showSessionTokens: boolean;
     showOutputStyle: boolean;
+    showContextEta: boolean;
     mergeGroups: HudElement[][];
     autocompactBuffer: AutocompactBufferMode;
     contextWarningThreshold: number;
@@ -164,6 +165,7 @@ export const DEFAULT_CONFIG: HudConfig = {
     promptCacheTtlSeconds: 300,
     showSessionTokens: false,
     showOutputStyle: false,
+    showContextEta: false,
     mergeGroups: DEFAULT_MERGE_GROUPS.map(group => [...group]),
     autocompactBuffer: 'enabled',
     contextWarningThreshold: 70,
@@ -508,6 +510,9 @@ export function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     showOutputStyle: typeof migrated.display?.showOutputStyle === 'boolean'
       ? migrated.display.showOutputStyle
       : DEFAULT_CONFIG.display.showOutputStyle,
+    showContextEta: typeof migrated.display?.showContextEta === 'boolean'
+      ? migrated.display.showContextEta
+      : DEFAULT_CONFIG.display.showContextEta,
     mergeGroups: validateMergeGroups(migrated.display?.mergeGroups),
     autocompactBuffer: validateAutocompactBuffer(migrated.display?.autocompactBuffer)
       ? migrated.display.autocompactBuffer

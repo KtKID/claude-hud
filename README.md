@@ -186,6 +186,7 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `display.externalUsagePath` | string | `""` | Optional path to a local usage snapshot file used only when stdin `rate_limits` are missing |
 | `display.externalUsageFreshnessMs` | number | `300000` | Maximum allowed age for the external usage snapshot before it is ignored |
 | `display.showTokenBreakdown` | boolean | true | Show token details at high context (85%+) |
+| `display.showContextEta` | boolean | false | Show predicted "context exhaustion" ETA (e.g. `→ ~12m to full`) extrapolated from recent usage growth. Color thresholds: > 30m dim, 10-30m yellow, < 10m red. Low-confidence predictions get a trailing `?`. |
 | `display.showTools` | boolean | false | Show tools activity line |
 | `display.showAgents` | boolean | false | Show agents activity line |
 | `display.showTodos` | boolean | false | Show todos progress line |

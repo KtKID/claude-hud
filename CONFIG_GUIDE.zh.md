@@ -178,6 +178,7 @@ HUD 用白名单校验，未知字段会被忽略——所以可以加 `_doc_*` 
 | `showClaudeCodeVersion` | `false` | CC v2.1.81 |
 | `showEffortLevel` | `false` | effort 符号 + 级别 |
 | `showOutputStyle` | `false` | style: 当前 outputStyle |
+| `showContextEta` | `false` | Context 爆炸倒计时 `→ ~12m to full`；> 30m 灰、10-30m 黄、< 10m 红；低置信度加 `?` |
 
 #### Prompt Cache
 

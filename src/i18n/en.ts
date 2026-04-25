@@ -27,6 +27,7 @@ export const en: Messages = {
   "format.out": "out",
   "format.tok": "tok",
   "format.tokPerSec": "tok/s",
+  "format.contextEtaUntilFull": "to full",
 
   // Init
   "init.initializing": "[claude-hud] Initializing...",
