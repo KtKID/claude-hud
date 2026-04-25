@@ -60,3 +60,6 @@ bun.lock
 
 # Serena MCP local cache
 .serena/
+
+# Local dev-pipeline scratchpad (x-req/x-plan/x-dev artifacts) - not for upstream
+dev-pipeline/

@@ -23,6 +23,7 @@ export type MessageKey =
   | "format.out"
   | "format.tok"
   | "format.tokPerSec"
+  | "format.contextEtaUntilFull"
   // Init
   | "init.initializing"
   | "init.macosNote";
