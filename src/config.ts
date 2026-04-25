@@ -19,7 +19,15 @@ export type GitBranchOverflowMode = 'truncate' | 'wrap';
  */
 export type ModelFormatMode = 'full' | 'compact' | 'short';
 export type TimeFormatMode = 'relative' | 'absolute' | 'both';
-export type HudElement = 'project' | 'context' | 'usage' | 'promptCache' | 'memory' | 'environment' | 'tools' | 'agents' | 'todos';
+export type HudElement =
+  | 'project' | 'context' | 'usage' | 'promptCache' | 'memory' | 'environment'
+  | 'tools' | 'agents' | 'todos'
+  // Fine-grained elements split out of the legacy 'project' bundle so users
+  // can compose their own line layouts via elementOrder + mergeGroups.
+  // The legacy 'project' key is still accepted on input and auto-expanded
+  // by mergeConfig (see expandLegacyProject), so existing configs keep working.
+  | 'model' | 'git' | 'version' | 'duration' | 'cost' | 'speed'
+  | 'sessionName' | 'extraLabel' | 'customLine' | 'outputStyle';
 export type HudColorName =
   | 'dim'
   | 'red'
@@ -47,23 +55,62 @@ export interface HudColorOverrides {
   custom: HudColorValue;
 }
 
+/**
+ * Default expanded-mode element order, optimized for a 4-line core layout:
+ *   line 1 — identity:     model + project (+ git when user opts in)
+ *   line 2 — health:       context + promptCache
+ *   line 3 — usage limit:  usage (5h + 7d already share a line internally)
+ *   line 4 — consumption:  cost + duration + speed
+ *
+ * Auxiliary elements (environment, version, sessionName, ...) sit on later
+ * lines via DEFAULT_MERGE_GROUPS. Activity elements (tools/agents/todos) get
+ * their own lines because their content can be wide and may multi-line.
+ *
+ * Note: 'git' is intentionally NOT in the default order. Users who want a git
+ * status line opt in by adding 'git' to elementOrder; it will still merge into
+ * the identity row thanks to DEFAULT_MERGE_GROUPS below.
+ */
 export const DEFAULT_ELEMENT_ORDER: HudElement[] = [
-  'project',
-  'context',
+  'model', 'project',
+  'context', 'promptCache',
   'usage',
-  'promptCache',
-  'memory',
-  'environment',
-  'tools',
-  'agents',
-  'todos',
+  'cost', 'duration', 'speed',
+  'environment', 'version', 'sessionName', 'outputStyle',
+  'memory', 'extraLabel', 'customLine',
+  'tools', 'agents', 'todos',
 ];
 
 export const DEFAULT_MERGE_GROUPS: HudElement[][] = [
-  ['context', 'usage'],
+  ['model', 'project', 'git'],
+  ['context', 'promptCache'],
+  ['cost', 'duration', 'speed'],
+  ['environment', 'version', 'sessionName', 'outputStyle'],
+  ['memory', 'extraLabel', 'customLine'],
 ];
 
-const KNOWN_ELEMENTS = new Set<HudElement>(DEFAULT_ELEMENT_ORDER);
+/**
+ * Every HudElement value that can appear in a user's elementOrder or
+ * mergeGroups. Includes 'git' even though it's not in the default order
+ * because the merge-group rule needs to know it's a valid element.
+ */
+const KNOWN_ELEMENTS = new Set<HudElement>([
+  ...DEFAULT_ELEMENT_ORDER,
+  'git',
+]);
+
+/**
+ * Sub-element keys that the legacy 'project' bundle used to render in a
+ * single line. When a user's config still contains 'project' in
+ * elementOrder or mergeGroups, mergeConfig expands it to this list so the
+ * old layout is preserved on first load. Order matches the historical
+ * join order in renderProjectLine.
+ */
+const LEGACY_PROJECT_EXPANSION: HudElement[] = [
+  'model', 'project', 'git',
+  'sessionName', 'version', 'extraLabel',
+  'duration', 'cost', 'speed',
+  'customLine',
+];
 
 export interface HudConfig {
   language: Language;
@@ -252,16 +299,86 @@ function validateColorValue(value: unknown): value is HudColorValue {
   return false;
 }
 
+/**
+ * Backwards-compatibility shim: when user configs still contain the legacy
+ * 'project' element key (which used to bundle 10 sub-elements in a single
+ * line), expand it into the fine-grained keys so the visual layout stays
+ * close to what the user previously saw.
+ *
+ * Returns a new array; preserves order and de-duplicates against elements
+ * already present (so a user who has e.g. ['project', 'model'] doesn't end
+ * up with two 'model' entries).
+ *
+ * Logs a one-shot DEBUG note (DEBUG=claude-hud) the first time it fires
+ * within a process, so users running with debug can see the migration.
+ */
+let legacyProjectMigrationLogged = false;
+
+/**
+ * Sub-element keys whose presence signals the user has already migrated to
+ * the fine-grained layout. When ANY of these appears in the same array, we
+ * treat 'project' as the new "path-only" semantics and skip expansion —
+ * otherwise we'd produce duplicates.
+ */
+const FINE_GRAINED_SIGNALS = new Set<string>([
+  'model', 'git', 'version', 'duration', 'cost', 'speed',
+  'sessionName', 'extraLabel', 'customLine', 'outputStyle',
+]);
+
+function expandLegacyProject(items: readonly string[]): string[] {
+  if (!items.includes('project' as string)) {
+    return [...items];
+  }
+
+  // If the user's array already contains any fine-grained signal element,
+  // they know about the post-refactor model — keep 'project' as the
+  // path-only element it now is, and don't introduce duplicates.
+  if (items.some(item => FINE_GRAINED_SIGNALS.has(item))) {
+    return [...items];
+  }
+
+  if (!legacyProjectMigrationLogged && typeof process !== 'undefined'
+      && process.env?.DEBUG?.includes('claude-hud')) {
+    process.stderr.write(
+      `[claude-hud:config-migration] Detected legacy 'project' element key. ` +
+      `Auto-expanding to fine-grained keys (${LEGACY_PROJECT_EXPANSION.join(', ')}). ` +
+      `Update your config.json to use the new keys directly to silence this notice.\n`
+    );
+    legacyProjectMigrationLogged = true;
+  }
+
+  const expanded: string[] = [];
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (item === 'project') {
+      for (const expandedItem of LEGACY_PROJECT_EXPANSION) {
+        if (!seen.has(expandedItem)) {
+          expanded.push(expandedItem);
+          seen.add(expandedItem);
+        }
+      }
+    } else if (!seen.has(item)) {
+      expanded.push(item);
+      seen.add(item);
+    }
+  }
+  return expanded;
+}
+
 function validateElementOrder(value: unknown): HudElement[] {
   if (!Array.isArray(value) || value.length === 0) {
     return [...DEFAULT_ELEMENT_ORDER];
   }
 
+  const expanded = expandLegacyProject(
+    value.filter((v): v is string => typeof v === 'string'),
+  );
+
   const seen = new Set<HudElement>();
   const elementOrder: HudElement[] = [];
 
-  for (const item of value) {
-    if (typeof item !== 'string' || !KNOWN_ELEMENTS.has(item as HudElement)) {
+  for (const item of expanded) {
+    if (!KNOWN_ELEMENTS.has(item as HudElement)) {
       continue;
     }
 
@@ -294,12 +411,19 @@ function validateMergeGroups(value: unknown): HudElement[][] {
       continue;
     }
 
+    // Apply the same legacy 'project' expansion at the group level so users
+    // with mergeGroups: [["project", "context"]] keep getting their old
+    // identity row merged after migration.
+    const expandedGroup = expandLegacyProject(
+      group.filter((v): v is string => typeof v === 'string'),
+    );
+
     const seenInGroup = new Set<HudElement>();
     const normalizedGroup: HudElement[] = [];
     const pendingElements: HudElement[] = [];
 
-    for (const item of group) {
-      if (typeof item !== 'string' || !KNOWN_ELEMENTS.has(item as HudElement)) {
+    for (const item of expandedGroup) {
+      if (!KNOWN_ELEMENTS.has(item as HudElement)) {
         continue;
       }
 

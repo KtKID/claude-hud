@@ -8,13 +8,22 @@ import { renderTodosLine } from './todos-line.js';
 import {
   renderIdentityLine,
   renderProjectLine,
-  renderGitFilesLine,
   renderEnvironmentLine,
   renderPromptCacheLine,
   renderUsageLine,
   renderMemoryLine,
   renderSessionTokensLine,
 } from './lines/index.js';
+import { renderModelLine } from './lines/model.js';
+import { renderGitLine, renderGitFilesLine } from './lines/git.js';
+import { renderVersionLine } from './lines/version.js';
+import { renderDurationLine } from './lines/duration.js';
+import { renderCostLine } from './lines/cost.js';
+import { renderSpeedLine } from './lines/speed.js';
+import { renderSessionNameLine } from './lines/session-name.js';
+import { renderExtraLabelLine } from './lines/extra-label.js';
+import { renderCustomLine } from './lines/custom-line.js';
+import { renderOutputStyleLine } from './lines/output-style.js';
 import { dim, RESET } from './colors.js';
 import { getTerminalWidth, UNKNOWN_TERMINAL_WIDTH } from '../utils/terminal.js';
 
@@ -380,6 +389,29 @@ function renderElementLine(
       return display?.showAgents === false ? null : renderAgentsLine(ctx);
     case 'todos':
       return display?.showTodos === false ? null : renderTodosLine(ctx);
+    // Fine-grained elements split out of the legacy 'project' bundle. Each
+    // has its own line module under render/lines/ so users can place them
+    // independently via elementOrder + mergeGroups.
+    case 'model':
+      return renderModelLine(ctx);
+    case 'git':
+      return renderGitLine(ctx);
+    case 'version':
+      return renderVersionLine(ctx);
+    case 'duration':
+      return renderDurationLine(ctx);
+    case 'cost':
+      return renderCostLine(ctx);
+    case 'speed':
+      return renderSpeedLine(ctx);
+    case 'sessionName':
+      return renderSessionNameLine(ctx);
+    case 'extraLabel':
+      return renderExtraLabelLine(ctx);
+    case 'customLine':
+      return renderCustomLine(ctx);
+    case 'outputStyle':
+      return renderOutputStyleLine(ctx);
   }
 }
 

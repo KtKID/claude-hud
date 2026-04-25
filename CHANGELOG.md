@@ -4,6 +4,36 @@ All notable changes to Claude HUD will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Split the `project` element into 10 fine-grained elements (`model`,
+  `git`, `version`, `duration`, `cost`, `speed`, `sessionName`,
+  `extraLabel`, `customLine`, `outputStyle`). Each can now be placed
+  independently via `elementOrder` and merged via `mergeGroups`.
+- New default 4-line core layout: identity / context+cache / usage /
+  consumption.
+
+### Changed
+
+- `DEFAULT_ELEMENT_ORDER` reworked to use the fine-grained keys.
+- `DEFAULT_MERGE_GROUPS` reworked to support the 4-line layout.
+- `outputStyle` moved from inside `renderEnvironmentLine` into its own
+  line module, surfaced via `elementOrder` element key `outputStyle`.
+
+### Deprecated
+
+- The legacy `'project'` key in `elementOrder` and `display.mergeGroups`
+  is auto-expanded to the fine-grained keys when the config doesn't
+  already reference any of them. New configs should use the fine-grained
+  keys directly. Set `DEBUG=claude-hud` to see the migration notice.
+
+### Backwards compatibility
+
+- All existing configs continue to work; the legacy `'project'` key is
+  expanded to its 10 sub-elements at config-load time. If a user's array
+  already contains any fine-grained key, expansion is skipped to avoid
+  duplicates (the user has clearly migrated).
+
 ## [0.0.12] - 2026-04-04
 
 ### Added

@@ -16,3 +16,13 @@ export function renderCostEstimate(ctx: RenderContext): string | null {
   const labelKey = cost.source === 'native' ? 'label.cost' : 'label.estimatedCost';
   return label(`${t(labelKey)} ${formatUsd(cost.totalUsd)}`, ctx.config?.colors);
 }
+
+/**
+ * elementOrder-friendly alias so the render dispatcher can treat 'cost'
+ * uniformly with the other line modules. Behavior is identical to
+ * renderCostEstimate; the original name is kept exported for callers (such
+ * as the legacy renderProjectLine) that still reference it.
+ */
+export function renderCostLine(ctx: RenderContext): string | null {
+  return renderCostEstimate(ctx);
+}

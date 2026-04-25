@@ -160,8 +160,8 @@ Chinese HUD labels are available as an explicit opt-in. English stays the defaul
 | `lineLayout` | string | `expanded` | Layout: `expanded` (multi-line) or `compact` (single line) |
 | `pathLevels` | 1-3 | 1 | Directory levels to show in project path |
 | `maxWidth` | number \| `null` | `null` | Optional fallback width used only when terminal width detection fails completely |
-| `elementOrder` | string[] | `["project","context","usage","promptCache","memory","environment","tools","agents","todos"]` | Expanded-mode element order. Omit entries to hide them in expanded mode. |
-| `display.mergeGroups` | string[][] | `[["context","usage"]]` | Expanded-mode groups that should share a line when adjacent. Set `[]` to disable merged lines. |
+| `elementOrder` | string[] | `["model","project","context","promptCache","usage","cost","duration","speed","environment","version","sessionName","outputStyle","memory","extraLabel","customLine","tools","agents","todos"]` | Expanded-mode element order. Omit entries to hide them in expanded mode. Each fine-grained element key (model/git/version/duration/cost/speed/sessionName/extraLabel/customLine/outputStyle) corresponds to its dedicated render module. The legacy `"project"` key still works and is auto-expanded into its 10 sub-elements at config-load time for backwards compatibility. |
+| `display.mergeGroups` | string[][] | `[["model","project","git"],["context","promptCache"],["cost","duration","speed"],["environment","version","sessionName","outputStyle"],["memory","extraLabel","customLine"]]` | Expanded-mode groups that should share a line when adjacent (and fit the terminal width). Set `[]` to disable merged lines. |
 | `gitStatus.enabled` | boolean | true | Show git branch in HUD |
 | `gitStatus.showDirty` | boolean | true | Show `*` for uncommitted changes |
 | `gitStatus.showAheadBehind` | boolean | false | Show `↑N ↓N` for ahead/behind remote |
@@ -214,6 +214,47 @@ Supported color names: `dim`, `red`, `green`, `yellow`, `magenta`, `cyan`, `brig
 `display.showCost` is fully opt-in. ClaudeHUD prefers the native `cost.total_cost_usd` field that Claude Code provides on stdin when it is available. If that field is absent or invalid for a direct Anthropic session, ClaudeHUD falls back to the existing local transcript-based estimate so the cost line still works on older payloads. The native field is absent before the first API response in a session, so the cost display may stay hidden until then. ClaudeHUD also keeps the cost hidden for known routed providers such as Bedrock and Vertex AI, because cloud-provider billed sessions may report `$0.00` or omit the field even though the session was not literally free.
 
 `display.showPromptCache` is fully opt-in. When enabled, ClaudeHUD looks at the timestamp of the last assistant response in the local transcript and shows a live countdown until the prompt cache expires. The default TTL is 5 minutes (`300` seconds). Set `display.promptCacheTtlSeconds` to `3600` if you want a 1-hour Max-style window. If the transcript does not have an assistant timestamp yet, the cache element stays hidden.
+
+### Customizing line layout
+
+Two settings together control the expanded-mode layout:
+
+- **`elementOrder`** decides which elements show up and in what order. Drop a
+  key from the array to hide that element entirely (this is stronger than
+  toggling its `display.show*` flag).
+- **`display.mergeGroups`** decides which adjacent elements get folded onto
+  the same line, joined by `│`. If a group's combined width does not fit the
+  terminal, ClaudeHUD splits it across lines automatically. Use `[]` to
+  disable merging and force one element per line.
+
+Each fine-grained element key — `model`, `git`, `version`, `duration`,
+`cost`, `speed`, `sessionName`, `extraLabel`, `customLine`, `outputStyle` —
+maps to its own render module, so you can reorder or hide them
+independently. The legacy `"project"` key is auto-expanded into its 10
+sub-elements at config-load time for backwards compatibility, unless your
+`elementOrder` already references one of the fine-grained keys (in which
+case ClaudeHUD assumes you have migrated and skips the expansion).
+
+For example, this produces a clean 4-line core layout — identity / context
++ cache / usage / consumption:
+
+```json
+{
+  "elementOrder": [
+    "model", "project",
+    "context", "promptCache",
+    "usage",
+    "cost", "duration", "speed"
+  ],
+  "display": {
+    "mergeGroups": [
+      ["model", "project"],
+      ["context", "promptCache"],
+      ["cost", "duration", "speed"]
+    ]
+  }
+}
+```
 
 ### Usage Limits
 
