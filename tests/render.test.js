@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { render } from '../dist/render/index.js';
 import { renderSessionLine } from '../dist/render/session-line.js';
 import { renderProjectLine, renderGitFilesLine } from '../dist/render/lines/project.js';
@@ -105,7 +106,10 @@ async function withDeterministicSpeedCache(fn) {
   const tempConfigDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-render-'));
   const originalConfigDir = process.env.CLAUDE_CONFIG_DIR;
   const originalNow = Date.now;
-  const cachePath = path.join(tempConfigDir, 'plugins', 'claude-hud', '.speed-cache.json');
+  const transcriptPath = path.join(tempConfigDir, 'session.jsonl');
+  await writeFile(transcriptPath, '', 'utf8');
+  const transcriptHash = createHash('sha256').update(path.resolve(transcriptPath)).digest('hex');
+  const cachePath = path.join(tempConfigDir, 'plugins', 'claude-hud', 'speed-cache', `${transcriptHash}.json`);
 
   process.env.CLAUDE_CONFIG_DIR = tempConfigDir;
   await mkdir(path.dirname(cachePath), { recursive: true });
@@ -113,7 +117,7 @@ async function withDeterministicSpeedCache(fn) {
   Date.now = () => 2000;
 
   try {
-    await fn();
+    await fn({ transcriptPath });
   } finally {
     Date.now = originalNow;
     if (originalConfigDir === undefined) {
@@ -752,8 +756,9 @@ test('renderProjectLine omits duration when showDuration is false', () => {
 });
 
 test('renderProjectLine includes speed when showSpeed is true and speed is available', async () => {
-  await withDeterministicSpeedCache(async () => {
+  await withDeterministicSpeedCache(async ({ transcriptPath }) => {
     const ctx = baseContext();
+    ctx.stdin.transcript_path = transcriptPath;
     ctx.stdin.cwd = '/tmp/my-project';
     ctx.stdin.context_window.current_usage.output_tokens = 2000;
     ctx.config.display.showSpeed = true;
@@ -773,8 +778,9 @@ test('renderProjectLine omits speed when showSpeed is false', () => {
 });
 
 test('render expanded layout includes speed and duration on the project line', async () => {
-  await withDeterministicSpeedCache(async () => {
+  await withDeterministicSpeedCache(async ({ transcriptPath }) => {
     const ctx = baseContext();
+    ctx.stdin.transcript_path = transcriptPath;
     ctx.config.lineLayout = 'expanded';
     ctx.stdin.cwd = '/tmp/my-project';
     ctx.stdin.context_window.current_usage.output_tokens = 2000;
