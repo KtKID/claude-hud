@@ -97,12 +97,30 @@ HUD 用白名单校验，未知字段会被忽略——所以可以加 `_doc_*` 
 ### `elementOrder` 元素顺序
 
 ```json
-"elementOrder": ["project","context","usage","promptCache","memory","environment","tools","agents","todos"]
+"elementOrder": [
+  "model", "project",
+  "context", "promptCache",
+  "usage",
+  "cost", "duration", "speed",
+  "environment", "version", "sessionName", "outputStyle",
+  "memory", "extraLabel", "customLine",
+  "tools", "agents", "todos"
+]
 ```
 
 - 控制 `expanded` 布局下元素的**出现顺序**
 - 从数组**移除**某项 = 该元素不显示（比 `display.showXxx` 更彻底）
-- 仅能从这 9 个值里挑选：`project` `context` `usage` `promptCache` `memory` `environment` `tools` `agents` `todos`
+- 可选值（细粒度）：
+  - **身份类**：`model`、`project`、`git`、`version`、`sessionName`
+  - **上下文类**：`context`、`promptCache`、`memory`
+  - **用量类**：`usage`、`cost`、`duration`、`speed`
+  - **环境类**：`environment`、`outputStyle`、`extraLabel`、`customLine`
+  - **活动类**：`tools`、`agents`、`todos`
+- **向后兼容**：旧的 `"project"` 关键字仍然可用，加载配置时会自动展开为
+  `model + project + git + version + duration + cost + speed + sessionName
+  + extraLabel + customLine + outputStyle` 这 10 个细粒度子项。如果你的
+  `elementOrder` 数组里已经显式列出了任意一个细粒度子项，则跳过展开
+  （默认认为你已经手动迁移）。
 
 ### `gitStatus` Git 状态
 
@@ -189,12 +207,19 @@ HUD 用白名单校验，未知字段会被忽略——所以可以加 `_doc_*` 
 #### 合并组 `mergeGroups`
 
 ```json
-"mergeGroups": [["context", "usage"]]
+"mergeGroups": [
+  ["model", "project", "git"],
+  ["context", "promptCache"],
+  ["cost", "duration", "speed"],
+  ["environment", "version", "sessionName", "outputStyle"],
+  ["memory", "extraLabel", "customLine"]
+]
 ```
 
 - 相邻元素若总宽度 ≤ 终端宽度就**合并到一行**，用 `│` 连接
 - 超宽自动拆成多行
 - 设为 `[]` 完全禁用合并（所有元素都独占一行）
+- 默认这 5 组对应「身份 / 上下文+缓存 / 消耗 / 环境元数据 / 杂项」5 类语义
 
 #### 阈值
 
@@ -378,6 +403,30 @@ HUD 用白名单校验，未知字段会被忽略——所以可以加 `_doc_*` 
   }
 }
 ```
+
+### 配方 F：4 行紧凑布局（重构后默认）
+
+适合大多数终端宽度。每行有清晰的语义主题。
+
+```json
+{
+  "elementOrder": [
+    "model", "project",
+    "context", "promptCache",
+    "usage",
+    "cost", "duration", "speed"
+  ],
+  "display": {
+    "mergeGroups": [
+      ["model", "project"],
+      ["context", "promptCache"],
+      ["cost", "duration", "speed"]
+    ]
+  }
+}
+```
+
+视觉：行 1 身份 / 行 2 上下文+缓冲 / 行 3 用量 / 行 4 消耗。
 
 ---
 
