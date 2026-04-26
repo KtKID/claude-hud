@@ -6,7 +6,17 @@ import { tmpdir } from 'node:os';
 import { createHash } from 'node:crypto';
 import { render } from '../dist/render/index.js';
 import { renderSessionLine } from '../dist/render/session-line.js';
-import { renderProjectLine, renderGitFilesLine } from '../dist/render/lines/project.js';
+import { renderProjectLine } from '../dist/render/lines/project.js';
+import { renderGitLine, renderGitFilesLine } from '../dist/render/lines/git.js';
+import { renderModelLine } from '../dist/render/lines/model.js';
+import { renderVersionLine } from '../dist/render/lines/version.js';
+import { renderDurationLine } from '../dist/render/lines/duration.js';
+import { renderCostLine } from '../dist/render/lines/cost.js';
+import { renderSpeedLine } from '../dist/render/lines/speed.js';
+import { renderSessionNameLine } from '../dist/render/lines/session-name.js';
+import { renderExtraLabelLine } from '../dist/render/lines/extra-label.js';
+import { renderCustomLine } from '../dist/render/lines/custom-line.js';
+import { renderOutputStyleLine } from '../dist/render/lines/output-style.js';
 import { renderPromptCacheLine } from '../dist/render/lines/prompt-cache.js';
 import { renderToolsLine } from '../dist/render/tools-line.js';
 import { renderAgentsLine } from '../dist/render/agents-line.js';
@@ -476,21 +486,21 @@ test('renderSessionLine applies modelOverride', () => {
   assert.ok(!line.includes('Claude Opus'));
 });
 
-test('renderProjectLine includes session name when showSessionName is true', () => {
+test('renderSessionNameLine outputs session name when showSessionName is true', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.transcript.sessionName = 'Renamed Session';
   ctx.config.display.showSessionName = true;
-  const line = renderProjectLine(ctx);
+  const line = renderSessionNameLine(ctx);
   assert.ok(line?.includes('Renamed Session'));
 });
 
-test('renderProjectLine includes Claude Code version when enabled', () => {
+test('renderVersionLine outputs Claude Code version when enabled', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.config.display.showClaudeCodeVersion = true;
   ctx.claudeCodeVersion = '2.1.81';
-  const line = stripAnsi(renderProjectLine(ctx));
+  const line = stripAnsi(renderVersionLine(ctx));
   assert.ok(line.includes('CC v2.1.81'));
 });
 
@@ -525,11 +535,11 @@ test('renderMemoryLine stays hidden in compact layout even when enabled', () => 
   assert.equal(renderMemoryLine(ctx), null);
 });
 
-test('renderProjectLine includes extraLabel when present', () => {
+test('renderExtraLabelLine outputs extraLabel when present', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.extraLabel = 'user [MAX]';
-  const line = renderProjectLine(ctx);
+  const line = renderExtraLabelLine(ctx);
   assert.ok(line?.includes('user [MAX]'));
 });
 
@@ -549,67 +559,88 @@ test('renderProjectLine hides session name by default', () => {
   assert.ok(!line?.includes('Renamed Session'));
 });
 
-test('renderProjectLine includes customLine when configured', () => {
+test('renderCustomLine outputs customLine when configured', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.config.display.customLine = 'Stay sharp';
-  const line = stripAnsi(renderProjectLine(ctx) ?? '');
+  const line = stripAnsi(renderCustomLine(ctx) ?? '');
   assert.ok(line.includes('Stay sharp'));
 });
 
-test('renderProjectLine applies modelFormat compact (strips context suffix)', () => {
+test('renderModelLine applies modelFormat compact (strips context suffix)', () => {
   const ctx = baseContext();
   ctx.stdin.model = { display_name: 'Opus 4.6 (1M context)' };
   ctx.config.display.modelFormat = 'compact';
-  const line = stripAnsi(renderProjectLine(ctx) ?? '');
+  const line = stripAnsi(renderModelLine(ctx) ?? '');
   assert.ok(line.includes('Opus 4.6'));
   assert.ok(!line.includes('context'));
 });
 
-test('renderProjectLine applies modelFormat short (strips Claude prefix and context)', () => {
+test('renderModelLine applies modelFormat short (strips Claude prefix and context)', () => {
   const ctx = baseContext();
   ctx.stdin.model = { display_name: 'Claude Sonnet 3.5 (200k context)' };
   ctx.config.display.modelFormat = 'short';
-  const line = stripAnsi(renderProjectLine(ctx) ?? '');
+  const line = stripAnsi(renderModelLine(ctx) ?? '');
   assert.ok(line.includes('Sonnet 3.5'));
   assert.ok(!line.includes('Claude'));
   assert.ok(!line.includes('context'));
 });
 
-test('renderProjectLine applies modelOverride as custom name', () => {
+test('renderModelLine applies modelOverride as custom name', () => {
   const ctx = baseContext();
   ctx.stdin.model = { display_name: 'Claude Opus 4.5' };
   ctx.config.display.modelOverride = "zane's intelligent opus";
-  const line = stripAnsi(renderProjectLine(ctx) ?? '');
+  const line = stripAnsi(renderModelLine(ctx) ?? '');
   assert.ok(line.includes("zane's intelligent opus"));
   assert.ok(!line.includes('Claude Opus'));
 });
 
-test('renderProjectLine modelOverride takes precedence over modelFormat', () => {
+test('renderModelLine modelOverride takes precedence over modelFormat', () => {
   const ctx = baseContext();
   ctx.stdin.model = { display_name: 'Claude Opus 4.5 (1M context)' };
   ctx.config.display.modelFormat = 'short';
   ctx.config.display.modelOverride = 'My Custom Model';
-  const line = stripAnsi(renderProjectLine(ctx) ?? '');
+  const line = stripAnsi(renderModelLine(ctx) ?? '');
   assert.ok(line.includes('My Custom Model'));
 });
 
-test('renderProjectLine uses configurable element colors', () => {
+test('renderModelLine uses configurable model color', () => {
+  const ctx = baseContext();
+  ctx.stdin.cwd = '/tmp/my-project';
+  ctx.config.colors.model = 214;
+
+  const line = renderModelLine(ctx);
+  assert.ok(line?.includes('\x1b[38;5;214m[Opus]\x1b[0m'));
+});
+
+test('renderProjectLine uses configurable project color', () => {
+  const ctx = baseContext();
+  ctx.stdin.cwd = '/tmp/my-project';
+  ctx.config.colors.project = 82;
+
+  const line = renderProjectLine(ctx);
+  assert.ok(line?.includes('\x1b[38;5;82mmy-project\x1b[0m'));
+});
+
+test('renderGitLine uses configurable git and gitBranch colors', () => {
+  const ctx = baseContext();
+  ctx.stdin.cwd = '/tmp/my-project';
+  ctx.gitStatus = { branch: 'main', isDirty: false, ahead: 0, behind: 0 };
+  ctx.config.colors.git = 220;
+  ctx.config.colors.gitBranch = '#33ff00';
+
+  const line = renderGitLine(ctx);
+  assert.ok(line?.includes('\x1b[38;5;220mgit:(\x1b[0m'));
+  assert.ok(line?.includes('\x1b[38;2;51;255;0mmain\x1b[0m'));
+});
+
+test('renderCustomLine uses configurable custom color', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.config.display.customLine = 'Stay sharp';
-  ctx.gitStatus = { branch: 'main', isDirty: false, ahead: 0, behind: 0 };
-  ctx.config.colors.model = 214;
-  ctx.config.colors.project = 82;
-  ctx.config.colors.git = 220;
-  ctx.config.colors.gitBranch = '#33ff00';
   ctx.config.colors.custom = '#ff6600';
 
-  const line = renderProjectLine(ctx);
-  assert.ok(line?.includes('\x1b[38;5;214m[Opus]\x1b[0m'));
-  assert.ok(line?.includes('\x1b[38;5;82mmy-project\x1b[0m'));
-  assert.ok(line?.includes('\x1b[38;5;220mgit:(\x1b[0m'));
-  assert.ok(line?.includes('\x1b[38;2;51;255;0mmain\x1b[0m'));
+  const line = renderCustomLine(ctx);
   assert.ok(line?.includes('\x1b[38;2;255;102;0mStay sharp\x1b[0m'));
 });
 
@@ -655,32 +686,39 @@ test('label color overrides apply across shared secondary text surfaces', () => 
   assert.ok(renderTodosLine(ctx)?.includes(`${expected}(1/2)\x1b[0m`));
 });
 
-test('renderEnvironmentLine shows output style when enabled', () => {
+test('renderOutputStyleLine shows output style when enabled', () => {
   const ctx = baseContext();
   ctx.outputStyle = 'tech-leader';
   ctx.config.display.showConfigCounts = false;
   ctx.config.display.showOutputStyle = true;
 
-  assert.ok(renderEnvironmentLine(ctx)?.includes('style: tech-leader'));
+  assert.ok(renderOutputStyleLine(ctx)?.includes('style: tech-leader'));
 });
 
-test('renderEnvironmentLine appends output style after config counts', () => {
+test('renderEnvironmentLine renders config counts when present', () => {
+  const ctx = baseContext();
+  ctx.claudeMdCount = 1;
+
+  const line = renderEnvironmentLine(ctx);
+  assert.ok(line?.includes('1 CLAUDE.md'));
+});
+
+test('renderOutputStyleLine renders style label independently of config counts', () => {
   const ctx = baseContext();
   ctx.claudeMdCount = 1;
   ctx.outputStyle = 'learning';
   ctx.config.display.showOutputStyle = true;
 
-  const line = renderEnvironmentLine(ctx);
-  assert.ok(line?.includes('1 CLAUDE.md'));
+  const line = renderOutputStyleLine(ctx);
   assert.ok(line?.includes('style: learning'));
 });
 
-test('renderProjectLine includes duration when showDuration is true', () => {
+test('renderDurationLine includes duration when showDuration is true', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.config.display.showDuration = true;
   ctx.sessionDuration = '12m 34s';
-  const line = renderProjectLine(ctx);
+  const line = renderDurationLine(ctx);
   assert.ok(line?.includes('12m 34s'), 'should include session duration');
 });
 
@@ -693,7 +731,7 @@ test('renderSessionLine shows native cost when stdin cost.total_cost_usd is avai
   assert.ok(line.includes('Cost $5.47'));
 });
 
-test('renderProjectLine falls back to an estimate when native cost is absent', () => {
+test('renderCostLine falls back to an estimate when native cost is absent', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.config.display.showCost = true;
@@ -705,7 +743,7 @@ test('renderProjectLine falls back to an estimate when native cost is absent', (
     outputTokens: 50000,
   };
 
-  const line = stripAnsi(renderProjectLine(ctx));
+  const line = stripAnsi(renderCostLine(ctx));
   assert.ok(line.includes('Est. $5.47'), `expected fallback estimate, got: ${line}`);
 });
 
@@ -731,7 +769,7 @@ test('renderProjectLine hides cost for provider-routed sessions', () => {
   }
 });
 
-test('renderProjectLine translates native cost label when Chinese is enabled', () => {
+test('renderCostLine translates native cost label when Chinese is enabled', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-project';
   ctx.config.display.showCost = true;
@@ -739,7 +777,7 @@ test('renderProjectLine translates native cost label when Chinese is enabled', (
 
   setLanguage('zh');
   try {
-    const line = stripAnsi(renderProjectLine(ctx));
+    const line = stripAnsi(renderCostLine(ctx));
     assert.ok(line.includes('费用 $5.47'));
   } finally {
     setLanguage('en');
@@ -755,7 +793,7 @@ test('renderProjectLine omits duration when showDuration is false', () => {
   assert.ok(!line?.includes('12m 34s'), 'should not include session duration when disabled');
 });
 
-test('renderProjectLine includes speed when showSpeed is true and speed is available', async () => {
+test('renderSpeedLine includes speed when showSpeed is true and speed is available', async () => {
   await withDeterministicSpeedCache(async ({ transcriptPath }) => {
     const ctx = baseContext();
     ctx.stdin.transcript_path = transcriptPath;
@@ -763,7 +801,7 @@ test('renderProjectLine includes speed when showSpeed is true and speed is avail
     ctx.stdin.context_window.current_usage.output_tokens = 2000;
     ctx.config.display.showSpeed = true;
 
-    const line = renderProjectLine(ctx);
+    const line = renderSpeedLine(ctx);
     assert.ok(line?.includes('out: 1000.0 tok/s'), 'should include deterministic speed');
   });
 });
@@ -777,7 +815,7 @@ test('renderProjectLine omits speed when showSpeed is false', () => {
   assert.ok(!line?.includes('tok/s'), 'should not include speed when disabled');
 });
 
-test('render expanded layout includes speed and duration on the project line', async () => {
+test('render expanded layout includes speed and duration as separate lines', async () => {
   await withDeterministicSpeedCache(async ({ transcriptPath }) => {
     const ctx = baseContext();
     ctx.stdin.transcript_path = transcriptPath;
@@ -786,13 +824,16 @@ test('render expanded layout includes speed and duration on the project line', a
     ctx.stdin.context_window.current_usage.output_tokens = 2000;
     ctx.config.display.showSpeed = true;
     ctx.sessionDuration = '12m 34s';
+    ctx.config.elementOrder = [
+      'project', 'context', 'usage', 'promptCache', 'duration', 'speed',
+      'memory', 'environment', 'tools', 'agents', 'todos',
+    ];
 
     const lines = withTerminal(120, () => captureRenderLines(ctx));
-    const projectLine = lines.find(line => line.includes('my-project'));
+    const stdout = lines.join('\n');
 
-    assert.ok(projectLine, 'expected an expanded project line');
-    assert.ok(projectLine.includes('out: 1000.0 tok/s'), 'should include deterministic speed');
-    assert.ok(projectLine.includes('⏱️  12m 34s'), 'should include session duration');
+    assert.ok(stdout.includes('out: 1000.0 tok/s'), 'should include deterministic speed');
+    assert.ok(stdout.includes('⏱️  12m 34s'), 'should include session duration');
   });
 });
 
@@ -804,16 +845,6 @@ test('renderSessionLine omits project name when showProject is false', () => {
   const line = renderSessionLine(ctx);
   assert.ok(!line.includes('my-project'), 'should not include project name when showProject is false');
   assert.ok(line.includes('git:('), 'should still include git status when showProject is false');
-});
-
-test('renderProjectLine keeps git status when showProject is false', () => {
-  const ctx = baseContext();
-  ctx.stdin.cwd = '/Users/jarrod/my-project';
-  ctx.gitStatus = { branch: 'main', isDirty: true, ahead: 0, behind: 0 };
-  ctx.config.display.showProject = false;
-  const line = renderProjectLine(ctx);
-  assert.ok(line?.includes('git:('), 'should still include git status');
-  assert.ok(!line?.includes('my-project'), 'should hide project path');
 });
 
 test('renderSessionLine displays git branch when present', () => {
@@ -849,15 +880,6 @@ test('renderSessionLine can give git its own segment for wrapping', () => {
   ctx.config.gitStatus.branchOverflow = 'wrap';
   const line = stripAnsi(renderSessionLine(ctx));
   assert.ok(line.includes('my-project | git:(feature/add-auth)'), 'git should render as a separate segment');
-});
-
-test('renderProjectLine can give git its own segment for wrapping', () => {
-  const ctx = baseContext();
-  ctx.stdin.cwd = '/tmp/my-project';
-  ctx.gitStatus = { branch: 'feature/add-auth', isDirty: false, ahead: 0, behind: 0 };
-  ctx.config.gitStatus.branchOverflow = 'wrap';
-  const line = stripAnsi(renderProjectLine(ctx) ?? '');
-  assert.ok(line.includes('my-project │ git:(feature/add-auth)'), 'git should render as a separate segment');
 });
 
 test('renderToolsLine renders running and completed tools', () => {
@@ -1772,7 +1794,7 @@ test('renderSessionLine combines showFileStats with showDirty and showAheadBehin
   assert.ok(line.includes('✘1'), 'expected deleted count');
 });
 
-test('renderProjectLine colors ahead count at warning threshold', () => {
+test('renderGitLine colors ahead count at warning threshold', () => {
   const ctx = baseContext();
   ctx.config.gitStatus = {
     enabled: true,
@@ -1784,11 +1806,11 @@ test('renderProjectLine colors ahead count at warning threshold', () => {
   };
   ctx.gitStatus = { branch: 'main', isDirty: false, ahead: 12, behind: 0 };
 
-  const line = renderProjectLine(ctx);
+  const line = renderGitLine(ctx);
   assert.ok(line?.includes('\x1b[33m↑12\x1b[0m'), 'ahead count should use warning color');
 });
 
-test('renderProjectLine colors ahead count at critical threshold', () => {
+test('renderGitLine colors ahead count at critical threshold', () => {
   const ctx = baseContext();
   ctx.config.gitStatus = {
     enabled: true,
@@ -1800,13 +1822,24 @@ test('renderProjectLine colors ahead count at critical threshold', () => {
   };
   ctx.gitStatus = { branch: 'main', isDirty: false, ahead: 25, behind: 0 };
 
-  const line = renderProjectLine(ctx);
+  const line = renderGitLine(ctx);
   assert.ok(line?.includes('\x1b[31m↑25\x1b[0m'), 'ahead count should use critical color');
 });
 
-test('renderProjectLine strips control characters from project and branch links', () => {
+test('renderProjectLine strips control characters from project link', () => {
   const ctx = baseContext();
   ctx.stdin.cwd = '/tmp/my-\u0007project';
+
+  const line = renderProjectLine(ctx) ?? '';
+  const visible = stripAnsi(line);
+
+  assert.ok(visible.includes('my-project'));
+  assert.ok(!line.includes('\u0007'));
+});
+
+test('renderGitLine strips control characters from branch link', () => {
+  const ctx = baseContext();
+  ctx.stdin.cwd = '/tmp/my-project';
   ctx.gitStatus = {
     branch: 'feat/\u0007name',
     isDirty: false,
@@ -1815,10 +1848,9 @@ test('renderProjectLine strips control characters from project and branch links'
     branchUrl: 'https://github.com/example/claude-hud/tree/feat%2Fname\u0007',
   };
 
-  const line = renderProjectLine(ctx) ?? '';
+  const line = renderGitLine(ctx) ?? '';
   const visible = stripAnsi(line);
 
-  assert.ok(visible.includes('my-project'));
   assert.ok(visible.includes('feat/name'));
   assert.ok(!line.includes('\u0007'));
 });

@@ -22,6 +22,14 @@ function restoreEnvVar(name, value) {
 }
 
 test('loadConfig returns valid config structure', async () => {
+  // Isolate from the developer's real ~/.claude/plugins/claude-hud/config.json
+  // by pointing CLAUDE_CONFIG_DIR at an empty temp dir so loadConfig falls back
+  // to DEFAULT_CONFIG.
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'claude-hud-cfg-'));
+  const previousConfigDir = process.env.CLAUDE_CONFIG_DIR;
+  process.env.CLAUDE_CONFIG_DIR = tempDir;
+
+  try {
   const config = await loadConfig();
 
   // pathLevels must be 1, 2, or 3
@@ -75,6 +83,10 @@ test('loadConfig returns valid config structure', async () => {
   for (const key of ['context', 'usage', 'warning', 'usageWarning', 'critical', 'model', 'project', 'git', 'gitBranch', 'label', 'custom']) {
     const t = typeof config.colors[key];
     assert.ok(t === 'string' || t === 'number', `colors.${key} should be string or number, got ${t}`);
+  }
+  } finally {
+    restoreEnvVar('CLAUDE_CONFIG_DIR', previousConfigDir);
+    await rm(tempDir, { recursive: true, force: true });
   }
 });
 
@@ -464,8 +476,16 @@ test('mergeConfig accepts valid mergeGroups and filters invalid entries', () => 
     },
   });
 
+  // The legacy 'project' key is auto-expanded into its 10 fine-grained
+  // sub-elements (model/project/git/sessionName/version/extraLabel/duration/
+  // cost/speed/customLine) so existing user configs keep their identity
+  // line populated after the line-granularity refactor.
   assert.deepEqual(config.display.mergeGroups, [
-    ['project', 'context', 'usage'],
+    [
+      'model', 'project', 'git', 'sessionName', 'version',
+      'extraLabel', 'duration', 'cost', 'speed', 'customLine',
+      'context', 'usage',
+    ],
     ['tools', 'todos'],
     ['agents', 'environment'],
   ]);
@@ -481,9 +501,16 @@ test('mergeConfig preserves valid custom elementOrder including activity element
   const config = mergeConfig({
     elementOrder: ['tools', 'project', 'usage', 'memory', 'context', 'agents', 'todos', 'environment'],
   });
+  // Legacy 'project' is auto-expanded into its fine-grained sub-elements,
+  // preserving the rest of the order.
   assert.deepEqual(
     config.elementOrder,
-    ['tools', 'project', 'usage', 'memory', 'context', 'agents', 'todos', 'environment']
+    [
+      'tools',
+      'model', 'project', 'git', 'sessionName', 'version',
+      'extraLabel', 'duration', 'cost', 'speed', 'customLine',
+      'usage', 'memory', 'context', 'agents', 'todos', 'environment',
+    ]
   );
 });
 
@@ -491,14 +518,38 @@ test('mergeConfig filters unknown entries and de-duplicates elementOrder', () =>
   const config = mergeConfig({
     elementOrder: ['project', 'agents', 'project', 'banana', 'usage', 'memory', 'agents', 'context'],
   });
-  assert.deepEqual(config.elementOrder, ['project', 'agents', 'usage', 'memory', 'context']);
+  // First 'project' expands; second 'project' is a no-op (already expanded).
+  // 'banana' is filtered. Duplicate 'agents' is dropped.
+  assert.deepEqual(config.elementOrder, [
+    'model', 'project', 'git', 'sessionName', 'version',
+    'extraLabel', 'duration', 'cost', 'speed', 'customLine',
+    'agents', 'usage', 'memory', 'context',
+  ]);
 });
 
 test('mergeConfig treats elementOrder as an explicit expanded-mode filter', () => {
   const config = mergeConfig({
     elementOrder: ['usage', 'project'],
   });
-  assert.deepEqual(config.elementOrder, ['usage', 'project']);
+  // 'project' expands after 'usage', preserving the leading position of usage.
+  assert.deepEqual(config.elementOrder, [
+    'usage',
+    'model', 'project', 'git', 'sessionName', 'version',
+    'extraLabel', 'duration', 'cost', 'speed', 'customLine',
+  ]);
+});
+
+test('mergeConfig preserves new fine-grained elementOrder without expansion', () => {
+  // When the user has already migrated to the fine-grained keys, expansion
+  // should be an identity operation.
+  const fineGrained = [
+    'model', 'project', 'git',
+    'context', 'promptCache',
+    'usage',
+    'cost', 'duration', 'speed',
+  ];
+  const config = mergeConfig({ elementOrder: fineGrained });
+  assert.deepEqual(config.elementOrder, fineGrained);
 });
 
 test('mergeConfig falls back to default when elementOrder is empty or invalid', () => {
