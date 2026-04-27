@@ -5,7 +5,6 @@ export function renderEnvironmentLine(ctx) {
     const totalCounts = ctx.claudeMdCount + ctx.rulesCount + ctx.mcpCount + ctx.hooksCount;
     const threshold = display?.environmentThreshold ?? 0;
     const showCounts = display?.showConfigCounts !== false;
-    const showOutputStyle = display?.showOutputStyle === true;
     const parts = [];
     if (showCounts && totalCounts >= threshold && totalCounts > 0) {
         if (ctx.claudeMdCount > 0) {
@@ -21,9 +20,8 @@ export function renderEnvironmentLine(ctx) {
             parts.push(`${ctx.hooksCount} ${t("label.hooks")}`);
         }
     }
-    if (showOutputStyle && ctx.outputStyle) {
-        parts.push(`style: ${ctx.outputStyle}`);
-    }
+    // Note: outputStyle moved to its own line module (lines/output-style.ts)
+    // so users can place it independently via elementOrder.
     if (parts.length === 0) {
         return null;
     }

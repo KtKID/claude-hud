@@ -12,7 +12,7 @@ export type GitBranchOverflowMode = 'truncate' | 'wrap';
  */
 export type ModelFormatMode = 'full' | 'compact' | 'short';
 export type TimeFormatMode = 'relative' | 'absolute' | 'both';
-export type HudElement = 'project' | 'context' | 'usage' | 'promptCache' | 'memory' | 'environment' | 'tools' | 'agents' | 'todos';
+export type HudElement = 'project' | 'context' | 'usage' | 'promptCache' | 'memory' | 'environment' | 'tools' | 'agents' | 'todos' | 'model' | 'git' | 'version' | 'duration' | 'cost' | 'speed' | 'sessionName' | 'extraLabel' | 'customLine' | 'outputStyle';
 export type HudColorName = 'dim' | 'red' | 'green' | 'yellow' | 'magenta' | 'cyan' | 'brightBlue' | 'brightMagenta';
 /** A color value: named preset, 256-color index (0-255), or hex string (#rrggbb). */
 export type HudColorValue = HudColorName | number | string;
@@ -28,7 +28,24 @@ export interface HudColorOverrides {
     gitBranch: HudColorValue;
     label: HudColorValue;
     custom: HudColorValue;
+    /** Optional override; when unset, color is chosen per effort level (low→dim, medium→green, high→yellow, xhigh→208 orange, max→red). */
+    effort?: HudColorValue;
 }
+/**
+ * Default expanded-mode element order, optimized for a 4-line core layout:
+ *   line 1 — identity:     model + project (+ git when user opts in)
+ *   line 2 — health:       context + promptCache
+ *   line 3 — usage limit:  usage (5h + 7d already share a line internally)
+ *   line 4 — consumption:  cost + duration + speed
+ *
+ * Auxiliary elements (environment, version, sessionName, ...) sit on later
+ * lines via DEFAULT_MERGE_GROUPS. Activity elements (tools/agents/todos) get
+ * their own lines because their content can be wide and may multi-line.
+ *
+ * Note: 'git' is intentionally NOT in the default order. Users who want a git
+ * status line opt in by adding 'git' to elementOrder; it will still merge into
+ * the identity row thanks to DEFAULT_MERGE_GROUPS below.
+ */
 export declare const DEFAULT_ELEMENT_ORDER: HudElement[];
 export declare const DEFAULT_MERGE_GROUPS: HudElement[][];
 export interface HudConfig {
@@ -72,6 +89,7 @@ export interface HudConfig {
         promptCacheTtlSeconds: number;
         showSessionTokens: boolean;
         showOutputStyle: boolean;
+        showContextEta: boolean;
         mergeGroups: HudElement[][];
         autocompactBuffer: AutocompactBufferMode;
         contextWarningThreshold: number;

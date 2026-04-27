@@ -84,6 +84,19 @@ export function claudeOrange(text: string): string {
   return colorize(text, CLAUDE_ORANGE);
 }
 
+const EFFORT_COLOR_BY_LEVEL: Record<string, string> = {
+  low: DIM,
+  medium: GREEN,
+  high: YELLOW,
+  xhigh: CLAUDE_ORANGE,
+  max: RED,
+};
+
+export function effort(text: string, level: string | undefined, colors?: Partial<HudColorOverrides>): string {
+  const fallback = level ? EFFORT_COLOR_BY_LEVEL[level.toLowerCase()] ?? DIM : DIM;
+  return withOverride(text, colors?.effort, fallback);
+}
+
 export function model(text: string, colors?: Partial<HudColorOverrides>): string {
   return withOverride(text, colors?.model, CYAN);
 }

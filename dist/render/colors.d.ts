@@ -7,6 +7,7 @@ export declare function cyan(text: string): string;
 export declare function magenta(text: string): string;
 export declare function dim(text: string): string;
 export declare function claudeOrange(text: string): string;
+export declare function effort(text: string, level: string | undefined, colors?: Partial<HudColorOverrides>): string;
 export declare function model(text: string, colors?: Partial<HudColorOverrides>): string;
 export declare function project(text: string, colors?: Partial<HudColorOverrides>): string;
 export declare function git(text: string, colors?: Partial<HudColorOverrides>): string;

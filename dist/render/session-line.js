@@ -1,7 +1,7 @@
 import { isLimitReached } from '../types.js';
 import { getContextPercent, getBufferedPercent, getModelName, formatModelName, getProviderLabel, getTotalTokens, shouldHideUsage } from '../stdin.js';
 import { getOutputSpeed } from '../speed-tracker.js';
-import { coloredBar, critical, git as gitColor, gitBranch as gitBranchColor, label, model as modelColor, project as projectColor, getContextColor, getQuotaColor, quotaBar, custom as customColor, RESET } from './colors.js';
+import { coloredBar, critical, git as gitColor, gitBranch as gitBranchColor, label, model as modelColor, project as projectColor, getContextColor, getQuotaColor, quotaBar, custom as customColor, effort as effortColor, RESET } from './colors.js';
 import { getAdaptiveBarWidth } from '../utils/terminal.js';
 import { renderCostEstimate } from './lines/cost.js';
 import { renderPromptCacheLine } from './lines/prompt-cache.js';
@@ -38,18 +38,15 @@ export function renderSessionLine(ctx) {
     // Model and context bar (FIRST)
     const providerLabel = getProviderLabel(ctx.stdin);
     const modelQualifier = providerLabel ?? undefined;
-    let modelDisplay = modelQualifier ? `${model} | ${modelQualifier}` : model;
-    if (ctx.effortLevel && ctx.effortSymbol) {
-        modelDisplay += ` ${ctx.effortSymbol}${ctx.effortLevel}`;
-    }
-    else if (ctx.effortLevel) {
-        modelDisplay += ` ${ctx.effortLevel}`;
-    }
+    const baseInner = modelQualifier ? `${model} | ${modelQualifier}` : model;
+    const modelBracket = ctx.effortLevel
+        ? `${modelColor(`[${baseInner} `, colors)}${effortColor(ctx.effortSymbol ? `${ctx.effortSymbol}${ctx.effortLevel}` : ctx.effortLevel, ctx.effortLevel, colors)}${modelColor(']', colors)}`
+        : modelColor(`[${baseInner}]`, colors);
     if (display?.showModel !== false && display?.showContextBar !== false) {
-        parts.push(`${modelColor(`[${modelDisplay}]`, colors)} ${bar} ${contextValueDisplay}`);
+        parts.push(`${modelBracket} ${bar} ${contextValueDisplay}`);
     }
     else if (display?.showModel !== false) {
-        parts.push(`${modelColor(`[${modelDisplay}]`, colors)} ${contextValueDisplay}`);
+        parts.push(`${modelBracket} ${contextValueDisplay}`);
     }
     else if (display?.showContextBar !== false) {
         parts.push(`${bar} ${contextValueDisplay}`);

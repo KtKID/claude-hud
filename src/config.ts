@@ -53,6 +53,8 @@ export interface HudColorOverrides {
   gitBranch: HudColorValue;
   label: HudColorValue;
   custom: HudColorValue;
+  /** Optional override; when unset, color is chosen per effort level (low→dim, medium→green, high→yellow, xhigh→208 orange, max→red). */
+  effort?: HudColorValue;
 }
 
 /**
@@ -702,6 +704,7 @@ export function mergeConfig(userConfig: Partial<HudConfig>): HudConfig {
     custom: validateColorValue(migrated.colors?.custom)
       ? migrated.colors.custom
       : DEFAULT_CONFIG.colors.custom,
+    ...(validateColorValue(migrated.colors?.effort) ? { effort: migrated.colors.effort } : {}),
   };
 
   return { language, lineLayout, showSeparators, pathLevels, maxWidth, elementOrder, gitStatus, display, colors };

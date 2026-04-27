@@ -68,6 +68,17 @@ export function dim(text) {
 export function claudeOrange(text) {
     return colorize(text, CLAUDE_ORANGE);
 }
+const EFFORT_COLOR_BY_LEVEL = {
+    low: DIM,
+    medium: GREEN,
+    high: YELLOW,
+    xhigh: CLAUDE_ORANGE,
+    max: RED,
+};
+export function effort(text, level, colors) {
+    const fallback = level ? EFFORT_COLOR_BY_LEVEL[level.toLowerCase()] ?? DIM : DIM;
+    return withOverride(text, colors?.effort, fallback);
+}
 export function model(text, colors) {
     return withOverride(text, colors?.model, CYAN);
 }

@@ -23,6 +23,7 @@ export const zh = {
     "format.out": "输出",
     "format.tok": "令牌",
     "format.tokPerSec": "tok/s",
+    "format.contextEtaUntilFull": "至满",
     // Init
     "init.initializing": "[claude-hud] 正在初始化...",
     "init.macosNote": "[claude-hud] 注意：在 macOS 上，您可能需要重启 Claude Code 才能显示 HUD。",

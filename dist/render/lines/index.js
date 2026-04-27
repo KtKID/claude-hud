@@ -1,5 +1,15 @@
 export { renderIdentityLine } from './identity.js';
-export { renderProjectLine, renderGitFilesLine } from './project.js';
+export { renderProjectLine } from './project.js';
+export { renderGitLine, renderGitFilesLine } from './git.js';
+export { renderModelLine } from './model.js';
+export { renderVersionLine } from './version.js';
+export { renderDurationLine } from './duration.js';
+export { renderCostEstimate, renderCostLine } from './cost.js';
+export { renderSpeedLine } from './speed.js';
+export { renderSessionNameLine } from './session-name.js';
+export { renderExtraLabelLine } from './extra-label.js';
+export { renderCustomLine } from './custom-line.js';
+export { renderOutputStyleLine } from './output-style.js';
 export { renderEnvironmentLine } from './environment.js';
 export { renderPromptCacheLine, formatPromptCacheCountdown } from './prompt-cache.js';
 export { renderUsageLine } from './usage.js';

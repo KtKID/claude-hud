@@ -1,5 +1,5 @@
 import { getContextPercent, getBufferedPercent, getTotalTokens, } from "../../stdin.js";
-import { coloredBar, label, getContextColor, RESET } from "../colors.js";
+import { coloredBar, label, getContextColor, RESET, dim, yellow, red } from "../colors.js";
 import { getAdaptiveBarWidth } from "../../utils/terminal.js";
 import { t } from "../../i18n/index.js";
 import { progressLabel } from "./label-align.js";
@@ -33,7 +33,39 @@ export function renderIdentityLine(ctx, alignLabels = false) {
             line += label(` (${t("format.in")}: ${input}, ${t("format.cache")}: ${cache})`, colors);
         }
     }
+    if (display?.showContextEta && ctx.contextEta) {
+        line += ` ${formatContextEta(ctx.contextEta)}`;
+    }
     return line;
+}
+/**
+ * Format an ETA prediction as a colored "→ ~Xm to full" suffix.
+ * Color thresholds:
+ *   > 30m  dim      (no urgency)
+ *   10-30m yellow   (heads-up)
+ *   < 10m  red      (act now)
+ * Low-confidence predictions get a trailing "?" to flag noise.
+ */
+function formatContextEta(eta) {
+    const minutes = eta.minutesUntilFull;
+    const suffix = eta.confidence === "low" ? "?" : "";
+    const text = `→ ~${formatMinutes(minutes)} ${t("format.contextEtaUntilFull")}${suffix}`;
+    if (minutes < 10)
+        return red(text);
+    if (minutes < 30)
+        return yellow(text);
+    return dim(text);
+}
+function formatMinutes(minutes) {
+    if (minutes >= 60) {
+        const hours = Math.floor(minutes / 60);
+        const remaining = Math.round(minutes - hours * 60);
+        return remaining > 0 ? `${hours}h${remaining}m` : `${hours}h`;
+    }
+    if (minutes >= 1) {
+        return `${Math.round(minutes)}m`;
+    }
+    return `<1m`;
 }
 function formatTokens(n) {
     if (n >= 1000000) {

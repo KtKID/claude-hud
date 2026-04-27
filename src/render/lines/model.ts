@@ -1,6 +1,6 @@
 import type { RenderContext } from '../../types.js';
 import { getModelName, formatModelName, getProviderLabel } from '../../stdin.js';
-import { model as modelColor } from '../colors.js';
+import { model as modelColor, effort as effortColor } from '../colors.js';
 
 /**
  * Render the model badge — `[Opus 4.7]` or `[Opus | Bedrock]` etc.
@@ -30,12 +30,13 @@ export function renderModelLine(ctx: RenderContext): string | null {
   );
   const providerLabel = getProviderLabel(ctx.stdin);
 
-  let modelDisplay = providerLabel ? `${model} | ${providerLabel}` : model;
-  if (ctx.effortLevel && ctx.effortSymbol) {
-    modelDisplay += ` ${ctx.effortSymbol}${ctx.effortLevel}`;
-  } else if (ctx.effortLevel) {
-    modelDisplay += ` ${ctx.effortLevel}`;
+  const baseInner = providerLabel ? `${model} | ${providerLabel}` : model;
+
+  if (ctx.effortLevel) {
+    const effortText = ctx.effortSymbol ? `${ctx.effortSymbol}${ctx.effortLevel}` : ctx.effortLevel;
+    const colored = effortColor(effortText, ctx.effortLevel, colors);
+    return `${modelColor(`[${baseInner} `, colors)}${colored}${modelColor(']', colors)}`;
   }
 
-  return modelColor(`[${modelDisplay}]`, colors);
+  return modelColor(`[${baseInner}]`, colors);
 }

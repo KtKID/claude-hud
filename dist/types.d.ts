@@ -93,6 +93,29 @@ export interface SessionTokenUsage {
     cacheCreationTokens: number;
     cacheReadTokens: number;
 }
+/**
+ * Single context-window observation captured at a point in time.
+ * A rolling window of these samples drives the ETA prediction.
+ */
+export interface ContextSample {
+    /** Wall-clock timestamp in milliseconds (Date.now()). */
+    timestamp: number;
+    /** Context usage percentage at this sample (0-100). */
+    percent: number;
+    /** Total input tokens accumulated at this sample. */
+    totalInputTokens: number;
+}
+/**
+ * Predicted "context exhaustion" ETA derived from a ContextSample window.
+ * Returned by predictContextEta(); null when the window is too small
+ * or growth is non-positive.
+ */
+export interface ContextEtaPrediction {
+    /** Estimated minutes until usage hits 100%, rounded to one decimal. */
+    minutesUntilFull: number;
+    /** Confidence flag — 'low' means the underlying samples are noisy/short. */
+    confidence: 'high' | 'low';
+}
 export interface TranscriptData {
     tools: ToolEntry[];
     agents: AgentEntry[];
@@ -121,5 +144,6 @@ export interface RenderContext {
     claudeCodeVersion?: string;
     effortLevel?: string;
     effortSymbol?: string;
+    contextEta?: ContextEtaPrediction | null;
 }
 //# sourceMappingURL=types.d.ts.map

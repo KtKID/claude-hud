@@ -9,6 +9,8 @@ import { getClaudeCodeVersion } from "./version.js";
 import { getMemoryUsage } from "./memory.js";
 import { resolveEffortLevel } from "./effort.js";
 import { applyContextWindowFallback } from "./context-cache.js";
+import { recordContextSample } from "./context-history.js";
+import { predictContextEta } from "./context-eta.js";
 import { getUsageFromExternalSnapshot } from "./external-usage.js";
 import { setLanguage, t } from "./i18n/index.js";
 export { getUsageFromExternalSnapshot } from "./external-usage.js";
@@ -77,6 +79,30 @@ export async function main(overrides = {}) {
         const memoryUsage = config.display.showMemoryUsage && config.lineLayout === "expanded"
             ? await deps.getMemoryUsage()
             : null;
+        // Record this tick's context sample for the ETA predictor and obtain
+        // the freshly-trimmed window. recordContextSample is a no-op (returns
+        // just the new sample) when no transcript_path is available.
+        //
+        // Skip used_percentage === 0 — Claude Code reports 0 on early ticks
+        // before usage is computed; treating that as a real sample would skew
+        // the regression and waste a slot in the rolling window.
+        let contextEta = null;
+        if (config.display.showContextEta) {
+            const usedPercent = stdin.context_window?.used_percentage;
+            const totalInputTokens = stdin.context_window?.total_input_tokens ?? 0;
+            if (typeof usedPercent === "number" &&
+                Number.isFinite(usedPercent) &&
+                usedPercent > 0) {
+                const sample = {
+                    timestamp: deps.now(),
+                    percent: usedPercent,
+                    totalInputTokens: typeof totalInputTokens === "number" ? totalInputTokens : 0,
+                };
+                const window = recordContextSample(stdin, sample, transcript.lastCompactBoundaryAt);
+                const history = window.slice(0, -1);
+                contextEta = predictContextEta(history, sample);
+            }
+        }
         const ctx = {
             stdin,
             transcript,
@@ -94,6 +120,7 @@ export async function main(overrides = {}) {
             claudeCodeVersion,
             effortLevel: effortInfo?.level,
             effortSymbol: effortInfo?.symbol,
+            contextEta,
         };
         deps.render(ctx);
     }
